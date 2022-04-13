@@ -9,8 +9,5 @@
         <module name="kafka-streams-solution" />
       </profile>
     </annotationProcessing>
-    <bytecodeTargetLevel>
-      <module name="kafka-streams-solution" target="11" />
-    </bytecodeTargetLevel>
   </component>
 </project>
