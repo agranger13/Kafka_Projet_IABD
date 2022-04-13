@@ -44,10 +44,10 @@ object StreamProcessing extends PlayJsonSupport {
 
   /**
    * -------------------
-   * Part.1 of exercise
+   * Part.1 view movie
    * -------------------
    */
-  // TODO: repartition visits per URL
+  // TODO: repartition visits per title
   val visitsGroupedByUrl: KGroupedStream[String, Visit] = visits.groupBy((key, value) => value.url)
 
   // TODO: implement a computation of the visits count per URL for the last 30 seconds,
