@@ -15,9 +15,7 @@ case class Top10MostRated(
         top10.sortWith(_.score > _.score).drop(10)
       )
     }
-    this.copy(
-      meanLatency = this.sum / this.count
-    )
+    this
   }
 }
 
@@ -25,5 +23,5 @@ case class Top10MostRated(
 object Top10MostRated {
   implicit val format: OFormat[Top10MostRated] = Json.format[Top10MostRated]
 
-  def empty: Top10MostRated = Top10MostRated(0, 0, 0)
+  def empty: Top10MostRated = Top10MostRated(List())
 }
