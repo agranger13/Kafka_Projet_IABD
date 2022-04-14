@@ -2,13 +2,13 @@ package org.esgi.project.streaming.models
 
 import play.api.libs.json.{Json, OFormat}
 
-case class Metric(
+case class Likes(
                    _id: String,
-                   timestamp: String,
-                   latency: Long
+                   score: Long
                  )
 
 
-object Metric {
-  implicit val format: OFormat[Metric] = Json.format[Metric]
+object Likes {
+  implicit val format: OFormat[Likes] = Json.format[Likes]
 }
+
