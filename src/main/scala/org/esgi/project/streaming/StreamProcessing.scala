@@ -5,7 +5,7 @@ import org.apache.kafka.streams.KafkaStreams
 import org.apache.kafka.streams.kstream.{JoinWindows, Printed, TimeWindows, Windowed}
 import org.apache.kafka.streams.scala._
 import org.apache.kafka.streams.scala.kstream._
-import org.esgi.project.streaming.models.{Likes, MeanLatencyForURL, MeanScoreForMovie, Metric, Views, Visit, VisitWithLatency}
+import org.esgi.project.streaming.models.{MeanLatencyForURL, Metric, Visit, VisitWithLatency}
 
 import java.io.InputStream
 import java.time.Duration
@@ -35,8 +35,8 @@ object StreamProcessing extends PlayJsonSupport {
   val builder: StreamsBuilder = new StreamsBuilder
 
   // TODO: declared topic sources to be used
-  val likes: KStream[String, Likes] = builder.stream[String, Likes](likesTopicName)
-  val views: KStream[String, Views] = builder.stream[String, Views](viewsTopicName)
+  val likes: KStream[String, Visit] = builder.stream[String, Visit](likesTopicName)
+  val views: KStream[String, Metric] = builder.stream[String, Metric](viewsTopicName)
 
   // TODO Number of views per film
   class movie_key(var _id: String = "0", var view_category: String = "half")
@@ -48,23 +48,26 @@ object StreamProcessing extends PlayJsonSupport {
   // TODO: implement a computation of the views (<10%, <90%, >90%) count per film for the last 30 seconds,
   // TODO: the last minute and the last 5 minutes
   val windows30: TimeWindows = TimeWindows.of(Duration.ofSeconds(30))
-  val viewsOfLast30Seconds: KTable[Windowed[String], Long] = viewsGroupedByMovie.windowedBy(windows30)
+  val viewsOfLast30Seconds: KTable[Windowed[String], Long] =visitsGroupedByUrl.windowedBy(windows30)
     .count()(Materialized.as("visitsOfLast30Seconds"))
 
   val windows1: TimeWindows = TimeWindows.of(Duration.ofMinutes(1))
-  val viewsOfLast1Minute: KTable[Windowed[String], Long] = viewsGroupedByMovie.windowedBy(windows1)
+  val viewsOfLast1Minute: KTable[Windowed[String], Long] = visitsGroupedByUrl.windowedBy(windows1)
     .count()(Materialized.as("visitsOfLast1Minute"))
 
   val windows5: TimeWindows = TimeWindows.of(Duration.ofMinutes(5))
-  val viewsOfLast5Minute: KTable[Windowed[String], Long] = viewsGroupedByMovie.windowedBy(windows5)
+  val viewsOfLast5Minute: KTable[Windowed[String], Long] = visitsGroupedByUrl.windowedBy(windows5)
     .count()(Materialized.as("visitsOfLast5Minute"))
 
-
-  val movieWithScore = views.join(likes)
+  // TODO:
+  val likesWithViews: KStream[String, LikesWithTitle] = likes.join(views)(
+    (likes:Likes, views:Views) => LikesWithTitle(likes._id, views.title, likes.score),
+    JoinWindows.of(Duration.ofMinutes(2))
+  )
 
   // TODO: based on the previous join, compute the mean latency per URL
-  val meanScorePerMovie: KTable[String, MeanScoreForMovie] = movieWithScore.groupBy((_, value)=> (value.url,value.))
-    .aggregate(MeanLatencyForURL.empty)(
+  val meanLatencyPerUrl: KTable[String, MeanLatencyForURL] = likesWithViews.groupBy((_,value)=> value._id)
+    .aggregate(Top10MostRated.empty)(
       (_,v, agg)=>{agg.increment(v.latency)}.computeMeanLatency,
     )(Materialized.as("meanLatencyPerUrl"))
   println(meanLatencyPerUrl.toStream.print(Printed.toSysOut()))
