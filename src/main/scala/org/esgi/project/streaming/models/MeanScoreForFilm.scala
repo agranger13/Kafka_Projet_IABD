@@ -5,7 +5,7 @@ import play.api.libs.json.{Json, OFormat}
 case class MeanScoreForFilm(
                              sum: Long,
                              count: Long,
-                             meanScore: Long,
+                             meanScore: Double,
                              title: String
                            ) {
   def increment(score: Long) = this.copy(sum = this.sum + score, count = this.count + 1)
