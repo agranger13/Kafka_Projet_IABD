@@ -7,7 +7,7 @@ import de.heikoseeberger.akkahttpplayjson.PlayJsonSupport
 import org.apache.kafka.streams.{KafkaStreams, StoreQueryParameters}
 import org.apache.kafka.streams.kstream.{KTable, Windowed}
 import org.apache.kafka.streams.state.{QueryableStoreTypes, ReadOnlyKeyValueStore, ReadOnlyWindowStore, WindowStoreIterator}
-import org.esgi.project.api.models.{MeanLatencyForURLResponse, MovieCountResponse, VisitCountResponse}
+import org.esgi.project.api.models.{MeanLatencyForURLResponse}
 import org.esgi.project.streaming.StreamProcessing
 import org.esgi.project.streaming.models.MeanLatencyForURL
 
@@ -20,6 +20,7 @@ import scala.jdk.CollectionConverters._
  * -------------------
  */
 object WebServer extends PlayJsonSupport {
+
   def routes(streams: KafkaStreams): Route = {
     concat(
       path("movies" / Segment) { id: String =>
@@ -58,51 +59,51 @@ object WebServer extends PlayJsonSupport {
               )
           }
         }
-      },
-      path("stats" / "ten"/ "best"/ "views") {
-        get {
-          val kvStoreMeanLatencyPerURL: ReadOnlyKeyValueStore[String, MeanLatencyForURL] = streams
-            .store("meanLatencyPerUrl", QueryableStoreTypes.keyValueStore[String,MeanLatencyForURL]())
-
-          complete(
-            kvStoreMeanLatencyPerURL.all().asScala.map(kv => MeanLatencyForURLResponse(kv.key,kv.value.meanLatency))
-              .toList
-          )
-        }
       }
-      path("stats"/ "ten"/ "best"/ "score"){
-        get {
-          val kvStoreMeanLatencyPerURL: ReadOnlyKeyValueStore[String, MeanLatencyForURL] = streams
-            .store("meanLatencyPerUrl", QueryableStoreTypes.keyValueStore[String,MeanLatencyForURL]())
-
-          complete(
-            kvStoreMeanLatencyPerURL.all().asScala.map(kv => MeanLatencyForURLResponse(kv.key,kv.value.meanLatency))
-              .toList
-          )
-        }
-      }
-        path("stats"/ "ten"/ "worst"/ "views"){
-        get {
-          val kvStoreMeanLatencyPerURL: ReadOnlyKeyValueStore[String, MeanLatencyForURL] = streams
-            .store("meanLatencyPerUrl", QueryableStoreTypes.keyValueStore[String,MeanLatencyForURL]())
-
-          complete(
-            kvStoreMeanLatencyPerURL.all().asScala.map(kv => MeanLatencyForURLResponse(kv.key,kv.value.meanLatency))
-              .toList
-          )
-        }
-      }
-        path("stats"/ "ten"/ "worst"/ "score"){
-        get {
-          val kvStoreMeanLatencyPerURL: ReadOnlyKeyValueStore[String, MeanLatencyForURL] = streams
-            .store("meanLatencyPerUrl", QueryableStoreTypes.keyValueStore[String,MeanLatencyForURL]())
-
-          complete(
-            kvStoreMeanLatencyPerURL.all().asScala.map(kv => MeanLatencyForURLResponse(kv.key,kv.value.meanLatency))
-              .toList
-          )
-        }
-      }
+//      path("stats" / "ten"/ "best"/ "views") {
+//        get {
+//          val kvStoreMeanLatencyPerURL: ReadOnlyKeyValueStore[String, MeanLatencyForURL] = streams
+//            .store("meanLatencyPerUrl", QueryableStoreTypes.keyValueStore[String,MeanLatencyForURL]())
+//
+//          complete(
+//            kvStoreMeanLatencyPerURL.all().asScala.map(kv => MeanLatencyForURLResponse(kv.key,kv.value.meanLatency))
+//              .toList
+//          )
+//        }
+//      }
+//      path("stats"/ "ten"/ "best"/ "score"){
+//        get {
+//          val kvStoreMeanLatencyPerURL: ReadOnlyKeyValueStore[String, MeanLatencyForURL] = streams
+//            .store("meanLatencyPerUrl", QueryableStoreTypes.keyValueStore[String,MeanLatencyForURL]())
+//
+//          complete(
+//            kvStoreMeanLatencyPerURL.all().asScala.map(kv => MeanLatencyForURLResponse(kv.key,kv.value.meanLatency))
+//              .toList
+//          )
+//        }
+//      }
+//        path("stats"/ "ten"/ "worst"/ "views"){
+//        get {
+//          val kvStoreMeanLatencyPerURL: ReadOnlyKeyValueStore[String, MeanLatencyForURL] = streams
+//            .store("meanLatencyPerUrl", QueryableStoreTypes.keyValueStore[String,MeanLatencyForURL]())
+//
+//          complete(
+//            kvStoreMeanLatencyPerURL.all().asScala.map(kv => MeanLatencyForURLResponse(kv.key,kv.value.meanLatency))
+//              .toList
+//          )
+//        }
+//      }
+//        path("stats"/ "ten"/ "worst"/ "score"){
+//        get {
+//          val kvStoreMeanLatencyPerURL: ReadOnlyKeyValueStore[String, MeanLatencyForURL] = streams
+//            .store("meanLatencyPerUrl", QueryableStoreTypes.keyValueStore[String,MeanLatencyForURL]())
+//
+//          complete(
+//            kvStoreMeanLatencyPerURL.all().asScala.map(kv => MeanLatencyForURLResponse(kv.key,kv.value.meanLatency))
+//              .toList
+//          )
+//        }
+//      }
     )
   }
 }

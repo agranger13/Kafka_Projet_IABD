@@ -5,7 +5,7 @@ import org.apache.kafka.streams.KafkaStreams
 import org.apache.kafka.streams.kstream.{JoinWindows, Printed, TimeWindows, Windowed}
 import org.apache.kafka.streams.scala._
 import org.apache.kafka.streams.scala.kstream._
-import org.esgi.project.streaming.models.{MeanLatencyForURL, Metric, Visit, VisitWithLatency}
+import org.esgi.project.streaming.models.{Likes, LikesWithTitle, MeanLatencyForURL, MeanScoreForFilm, Top10MostRated, Views, ViewsCategories}
 
 import java.io.InputStream
 import java.time.Duration
@@ -25,6 +25,8 @@ object StreamProcessing extends PlayJsonSupport {
   val lastMinuteStoreName = "NumberViewsOfLast1Minute"
   val lastFiveMinutesStoreName = "NumberViewsOfLast5Minute"
   val fromBeginningStoreName = "NumberViewsFromBeginning"
+
+  val MeanScorePerFilmStoreName = "MeanScorePerFilm"
 
   val Top10lowRatingStoreName = "Top10lowRating"
   val Top10highRatingStoreName = "Top10highRating"
@@ -103,12 +105,22 @@ object StreamProcessing extends PlayJsonSupport {
     JoinWindows.of(Duration.ofMinutes(2))
   )
 
-  // TODO: based on the previous join, compute the mean latency per URL
-  val meanLatencyPerUrl: KTable[String, MeanLatencyForURL] = likesWithViews.groupBy((_,value)=> value._id)
+  val meanScorePerFilm: KTable[String, MeanScoreForFilm] = likesWithViews.groupBy((_,value)=> value._id)
+    .aggregate(MeanScoreForFilm.empty)(
+      (_,v, agg)=>{agg.increment(v.score)}.computeMeanScore.attributeTitle(v.title)
+    )
+  //(Materialized.as(MeanScorePerFilmStoreName))
+
+  val meanScorePerFilmStream:KGroupedStream[String, MeanScoreForFilm] = meanScorePerFilm.toStream.groupByKey
+
+  val top10BestScore: KTable[String, Top10MostRated] = meanScorePerFilmStream
     .aggregate(Top10MostRated.empty)(
-      (_,v, agg)=>{agg.increment(v.latency)}.computeMeanLatency,
-    )(Materialized.as("meanLatencyPerUrl"))
-  println(meanLatencyPerUrl.toStream.print(Printed.toSysOut()))
+      (k,v, agg)=>{agg.add(LikesWithTitle (k, v.title, v.meanScore))}.computeTop10,
+    )(Materialized.as("top10BestScore"))
+  println(top10BestScore.toStream.print(Printed.toSysOut()))
+
+
+
   // -------------------------------------------------------------
   // TODO: now that you're here, materialize all of those KTables
   // TODO: to stores to be able to query them in Webserver.scala

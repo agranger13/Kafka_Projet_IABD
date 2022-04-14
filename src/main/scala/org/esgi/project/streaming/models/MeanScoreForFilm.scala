@@ -5,18 +5,23 @@ import play.api.libs.json.{Json, OFormat}
 case class MeanScoreForFilm(
                              sum: Long,
                              count: Long,
-                             meanLatency: Long
+                             meanScore: Long,
+                             title: String
                            ) {
-  def increment(latency: Long) = this.copy(sum = this.sum + latency, count = this.count + 1)
+  def increment(score: Long) = this.copy(sum = this.sum + score, count = this.count + 1)
 
-  def computeMeanLatency = this.copy(
-    meanLatency = this.sum / this.count
+  def computeMeanScore = this.copy(
+    meanScore = this.sum / this.count
+  )
+
+  def attributeTitle(title: String) = this.copy(
+    title = title
   )
 }
 
 object MeanScoreForFilm {
   implicit val format: OFormat[MeanScoreForFilm] = Json.format[MeanScoreForFilm]
 
-  def empty: MeanScoreForFilm = MeanScoreForFilm(0, 0, 0)
+  def empty: MeanScoreForFilm = MeanScoreForFilm(0, 0, 0, "")
 }
 
