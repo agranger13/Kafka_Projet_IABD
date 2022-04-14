@@ -41,6 +41,7 @@ object StreamProcessing extends PlayJsonSupport {
   // TODO Number of views per film
   class movie_key(var _id: String = "0", var view_category: String = "half")
   val viewsGroupedByMovie: KGroupedStream[String, Views] =  views
+    .filter()
     .groupBy((key, value) => value._id)
 
 
