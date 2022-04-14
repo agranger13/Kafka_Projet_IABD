@@ -35,29 +35,71 @@ object StreamProcessing extends PlayJsonSupport {
   val builder: StreamsBuilder = new StreamsBuilder
 
   // TODO: declared topic sources to be used
-  val likes: KStream[String, Visit] = builder.stream[String, Visit](likesTopicName)
-  val views: KStream[String, Metric] = builder.stream[String, Metric](viewsTopicName)
+  val likes: KStream[String, Likes] = builder.stream[String, Likes](likesTopicName)
+  val views: KStream[String, Views] = builder.stream[String, Views](viewsTopicName)
+
 
   // TODO Number of views per film
-  class movie_key(var _id: String = "0", var view_category: String = "half")
-  val viewsGroupedByMovie: KGroupedStream[String, Views] =  views
-    .filter()
+//  class movie_key(var _id: String, var view_category: String)
+  val viewsGroupedByMovieHalf: KGroupedStream[String, Views] =  views
+    .filter((k, v) => v.view_category == "half")
     .groupBy((key, value) => value._id)
 
+  val viewsGroupedByMovieStart: KGroupedStream[String, Views] =  views
+    .filter((k, v) => v.view_category == "start_only")
+    .groupBy((key, value) => value._id)
+
+  val viewsGroupedByMovieFull: KGroupedStream[String, Views] =  views
+    .filter((k, v) => v.view_category == "full")
+    .groupBy((key, value) => value._id)
+
+
+  val viewsGroupedByMovie: KGroupedStream[String, Views] =  views.groupBy((k, v) => v._id + v.title)
+
+  val likesGroupedByMovie: KGroupedStream[String, Likes] = likes.groupBy((k , v) => v._id)
+
+
+//  val viewsGroupedByMovie: KGroupedStream[movie_key, Views] =  views
+//    .groupBy((key, value) => new movie_key(value._id, value.view_category)) // issue with class to group
 
   // TODO: implement a computation of the views (<10%, <90%, >90%) count per film for the last 30 seconds,
   // TODO: the last minute and the last 5 minutes
   val windows30: TimeWindows = TimeWindows.of(Duration.ofSeconds(30))
-  val viewsOfLast30Seconds: KTable[Windowed[String], Long] =visitsGroupedByUrl.windowedBy(windows30)
-    .count()(Materialized.as("visitsOfLast30Seconds"))
+
+  val viewsOfLast30Seconds: KTable[Windowed[String], Long] =viewsGroupedByMovie.windowedBy(windows30)
+    .count()
+//  (Materialized.as("viewsOfLast30Seconds"))
+
+  val viewsOfLast30SecondsStart: KTable[Windowed[String], Long] =viewsGroupedByMovieStart
+    .windowedBy(windows30)
+    .count()
+  //  (Materialized.as("viewsOfLast30SecondsStart"))
+
+  val viewsOfLast30SecondsHalf: KTable[Windowed[String], Long] =viewsGroupedByMovieHalf
+    .windowedBy(windows30)
+    .count()
+//  (Materialized.as("viewsOfLast30SecondsStart"))
+
+  val viewsOfLast30SecondsFull: KTable[Windowed[String], Long] =viewsGroupedByMovieFull
+    .windowedBy(windows30)
+    .count()
+//  (Materialized.as("viewsOfLast30SecondsStart"))
+
+  val viewsFormatted = viewsOfLast30SecondsStart.join(viewsOfLast30SecondsHalf)(
+    (start: Long, half: Long) => new ViewsCategories(start, half)
+  )
 
   val windows1: TimeWindows = TimeWindows.of(Duration.ofMinutes(1))
-  val viewsOfLast1Minute: KTable[Windowed[String], Long] = visitsGroupedByUrl.windowedBy(windows1)
-    .count()(Materialized.as("visitsOfLast1Minute"))
+  val viewsOfLast1Minute: KTable[Windowed[String], Long] = viewsGroupedByMovieStart.windowedBy(windows1)
+    .count()(Materialized.as("visitsOfLast1MinuteStart"))
+//  val hehe = viewsOfLast30SecondsStart.join(viewsOfLast30Seconds)(
+//    (likes: Long, views: Long) => List(likes, views),
+//    JoinWindows.of(Duration.ofMinutes(2))
+//  )
 
   val windows5: TimeWindows = TimeWindows.of(Duration.ofMinutes(5))
-  val viewsOfLast5Minute: KTable[Windowed[String], Long] = visitsGroupedByUrl.windowedBy(windows5)
-    .count()(Materialized.as("visitsOfLast5Minute"))
+  val viewsOfLast5Minute: KTable[Windowed[String], Long] = viewsGroupedByMovieStart.windowedBy(windows5)
+    .count()(Materialized.as("visitsOfLast5MinuteStart"))
 
   // TODO:
   val likesWithViews: KStream[String, LikesWithTitle] = likes.join(views)(

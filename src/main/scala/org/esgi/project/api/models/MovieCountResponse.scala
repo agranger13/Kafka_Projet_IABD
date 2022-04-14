@@ -18,5 +18,5 @@ case class InfoStatMovie(
                         )
 
 object MovieCountResponse {
-  implicit val format: OFormat[MovieCountResponse] = Json.format[StatBestScoreResponse]
+  implicit val format: OFormat[MovieCountResponse] = Json.format[MovieCountResponse]
 }

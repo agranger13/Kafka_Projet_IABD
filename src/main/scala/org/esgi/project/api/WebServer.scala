@@ -25,32 +25,32 @@ object WebServer extends PlayJsonSupport {
       path("movies" / Segment) { id: String =>
         get {
           id match {
-            case "from start" =>
-              val kvStoreBeginning: ReadOnlyWindowStore[String, Long] = streams
-                .store("fromBeginningStoreName", QueryableStoreTypes.windowStore[String,Long]())
-              val toTime = Instant.now()
-              val fromTime = toTime.minusSeconds(1)
-              complete(
-                //allKeyValues.groupBy(_._1).mapValues(_.map(_._2).sum).toList
-                kvStoreBeginning.fetchAll(fromTime,toTime).asScala.map(kv => MovieCountResponse(kv.key.key(),kv.value)).toList
-              )
-            case "from 1min" =>
-              val kvStore1Minute: ReadOnlyWindowStore[String, Long] = streams
-                .store("lastMinuteStoreName", QueryableStoreTypes.windowStore[String,Long]())
-              val toTime = Instant.now()
-              val fromTime = toTime.minusSeconds(60)
-              complete(
-                kvStore1Minute.fetchAll(fromTime,toTime).asScala.map(kv => MovieCountResponse(kv.key.key(),kv.value)).toList
-              )
-            case "from 5min" =>
-              val kvStore5Minute: ReadOnlyWindowStore[String, Long] = streams
-                .store("lastFiveMinutesStoreName", QueryableStoreTypes.windowStore[String,Long]())
-              val toTime = Instant.now()
-              val fromTime = toTime.minusSeconds(300)
-              complete(
-                kvStore5Minute.fetchAll(fromTime,toTime).asScala.map(kv => MovieCountResponse(kv.key.key(),kv.value))
-                  .toList
-              )
+//            case "from start" =>
+//              val kvStoreBeginning: ReadOnlyWindowStore[String, Long] = streams
+//                .store("fromBeginningStoreName", QueryableStoreTypes.windowStore[String,Long]())
+//              val toTime = Instant.now()
+//              val fromTime = toTime.minusSeconds(1)
+//              complete(
+//                //allKeyValues.groupBy(_._1).mapValues(_.map(_._2).sum).toList
+//                kvStoreBeginning.fetchAll(fromTime,toTime).asScala.map(kv => MovieCountResponse(kv.key.key(),kv.value)).toList
+//              )
+//            case "from 1min" =>
+//              val kvStore1Minute: ReadOnlyWindowStore[String, Long] = streams
+//                .store("lastMinuteStoreName", QueryableStoreTypes.windowStore[String,Long]())
+//              val toTime = Instant.now()
+//              val fromTime = toTime.minusSeconds(60)
+//              complete(
+//                kvStore1Minute.fetchAll(fromTime,toTime).asScala.map(kv => MovieCountResponse(kv.key.key(),kv.value)).toList
+//              )
+//            case "from 5min" =>
+//              val kvStore5Minute: ReadOnlyWindowStore[String, Long] = streams
+//                .store("lastFiveMinutesStoreName", QueryableStoreTypes.windowStore[String,Long]())
+//              val toTime = Instant.now()
+//              val fromTime = toTime.minusSeconds(300)
+//              complete(
+//                kvStore5Minute.fetchAll(fromTime,toTime).asScala.map(kv => MovieCountResponse(kv.key.key(),kv.value))
+//                  .toList
+//              )
             case _ =>
               // unhandled period asked
               complete(
