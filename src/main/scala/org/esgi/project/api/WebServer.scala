@@ -7,9 +7,9 @@ import de.heikoseeberger.akkahttpplayjson.PlayJsonSupport
 import org.apache.kafka.streams.{KafkaStreams, StoreQueryParameters}
 import org.apache.kafka.streams.kstream.{KTable, Windowed}
 import org.apache.kafka.streams.state.{QueryableStoreTypes, ReadOnlyKeyValueStore, ReadOnlyWindowStore, WindowStoreIterator}
-import org.esgi.project.api.models.{MeanLatencyForURLResponse}
+import org.esgi.project.api.models.{MeanLatencyForURLResponse, MeanScorePerFilmResponse}
 import org.esgi.project.streaming.StreamProcessing
-import org.esgi.project.streaming.models.MeanLatencyForURL
+import org.esgi.project.streaming.models.{MeanScoreForFilm}
 
 import java.time.Instant
 import scala.jdk.CollectionConverters._
@@ -59,7 +59,7 @@ object WebServer extends PlayJsonSupport {
               )
           }
         }
-      }
+      },
 //      path("stats" / "ten"/ "best"/ "views") {
 //        get {
 //          val kvStoreMeanLatencyPerURL: ReadOnlyKeyValueStore[String, MeanLatencyForURL] = streams
@@ -71,17 +71,17 @@ object WebServer extends PlayJsonSupport {
 //          )
 //        }
 //      }
-//      path("stats"/ "ten"/ "best"/ "score"){
-//        get {
-//          val kvStoreMeanLatencyPerURL: ReadOnlyKeyValueStore[String, MeanLatencyForURL] = streams
-//            .store("meanLatencyPerUrl", QueryableStoreTypes.keyValueStore[String,MeanLatencyForURL]())
-//
-//          complete(
-//            kvStoreMeanLatencyPerURL.all().asScala.map(kv => MeanLatencyForURLResponse(kv.key,kv.value.meanLatency))
-//              .toList
-//          )
-//        }
-//      }
+      path("stats"/ "ten"/ "best"/ "score"){
+        get {
+          val kvStoreMeanScorePerFilm: ReadOnlyKeyValueStore[String, MeanScoreForFilm] = streams
+            .store(StreamProcessing.MeanScorePerFilmStoreName, QueryableStoreTypes.keyValueStore[String,MeanScoreForFilm]())
+
+          complete(
+            kvStoreMeanScorePerFilm.all().asScala.map(kv => MeanScorePerFilmResponse(kv.value.title,kv.value.meanScore))
+              .toList.sortBy(- _.meanScore).take(10)
+          )
+        }
+      }
 //        path("stats"/ "ten"/ "worst"/ "views"){
 //        get {
 //          val kvStoreMeanLatencyPerURL: ReadOnlyKeyValueStore[String, MeanLatencyForURL] = streams

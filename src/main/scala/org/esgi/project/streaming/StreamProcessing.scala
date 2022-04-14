@@ -78,16 +78,7 @@ object StreamProcessing extends PlayJsonSupport {
   val meanScorePerFilm: KTable[String, MeanScoreForFilm] = likesWithViews.groupBy((_,value)=> value._id)
     .aggregate(MeanScoreForFilm.empty)(
       (_,v, agg)=>{agg.increment(v.score)}.computeMeanScore.attributeTitle(v.title)
-    )
-
-  val meanScorePerFilmStream:KGroupedStream[String, MeanScoreForFilm] = meanScorePerFilm.toStream.groupByKey
-
-  val top10BestScore: KTable[String, Top10MostRated] = meanScorePerFilmStream
-    .aggregate(Top10MostRated.empty)(
-      (k,v, agg)=>{agg.add(LikesWithTitle (k, v.title, v.meanScore))}.computeTop10,
-    )(Materialized.as("top10BestScore"))
-  println(top10BestScore.toStream.print(Printed.toSysOut()))
-
+    )(Materialized.as(MeanScorePerFilmStoreName))
 
 
   // -------------------------------------------------------------

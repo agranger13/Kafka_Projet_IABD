@@ -3,12 +3,12 @@ package org.esgi.project.streaming.models
 import play.api.libs.json.{Json, OFormat}
 
 case class MeanScoreForFilm(
-                             sum: Long,
-                             count: Long,
+                             sum: Double,
+                             count: Double,
                              meanScore: Double,
                              title: String
                            ) {
-  def increment(score: Long) = this.copy(sum = this.sum + score, count = this.count + 1)
+  def increment(score: Double) = this.copy(sum = this.sum + score, count = this.count + 1)
 
   def computeMeanScore = this.copy(
     meanScore = this.sum / this.count
