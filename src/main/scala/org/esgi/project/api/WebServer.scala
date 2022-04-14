@@ -7,9 +7,9 @@ import de.heikoseeberger.akkahttpplayjson.PlayJsonSupport
 import org.apache.kafka.streams.{KafkaStreams, StoreQueryParameters}
 import org.apache.kafka.streams.kstream.{KTable, Windowed}
 import org.apache.kafka.streams.state.{QueryableStoreTypes, ReadOnlyKeyValueStore, ReadOnlyWindowStore, WindowStoreIterator}
-import org.esgi.project.api.models.{MeanLatencyForURLResponse, MeanScorePerFilmResponse}
+import org.esgi.project.api.models.{MeanLatencyForURLResponse, MeanScorePerFilmResponse, MovieCountResponse, MovieStatResponse, StatsMovie, TitleViewsResponse, ViewsByMovie}
 import org.esgi.project.streaming.StreamProcessing
-import org.esgi.project.streaming.models.{MeanScoreForFilm}
+import org.esgi.project.streaming.models.{InfoStatMovie, MeanScoreForFilm}
 
 import java.time.Instant
 import scala.jdk.CollectionConverters._
@@ -25,52 +25,58 @@ object WebServer extends PlayJsonSupport {
     concat(
       path("movies" / Segment) { id: String =>
         get {
-          id match {
-//            case "from start" =>
-//              val kvStoreBeginning: ReadOnlyWindowStore[String, Long] = streams
-//                .store("fromBeginningStoreName", QueryableStoreTypes.windowStore[String,Long]())
-//              val toTime = Instant.now()
-//              val fromTime = toTime.minusSeconds(1)
-//              complete(
-//                //allKeyValues.groupBy(_._1).mapValues(_.map(_._2).sum).toList
-//                kvStoreBeginning.fetchAll(fromTime,toTime).asScala.map(kv => MovieCountResponse(kv.key.key(),kv.value)).toList
-//              )
-//            case "from 1min" =>
-//              val kvStore1Minute: ReadOnlyWindowStore[String, Long] = streams
-//                .store("lastMinuteStoreName", QueryableStoreTypes.windowStore[String,Long]())
-//              val toTime = Instant.now()
-//              val fromTime = toTime.minusSeconds(60)
-//              complete(
-//                kvStore1Minute.fetchAll(fromTime,toTime).asScala.map(kv => MovieCountResponse(kv.key.key(),kv.value)).toList
-//              )
-//            case "from 5min" =>
-//              val kvStore5Minute: ReadOnlyWindowStore[String, Long] = streams
-//                .store("lastFiveMinutesStoreName", QueryableStoreTypes.windowStore[String,Long]())
-//              val toTime = Instant.now()
-//              val fromTime = toTime.minusSeconds(300)
-//              complete(
-//                kvStore5Minute.fetchAll(fromTime,toTime).asScala.map(kv => MovieCountResponse(kv.key.key(),kv.value))
-//                  .toList
-//              )
-            case _ =>
-              // unhandled period asked
-              complete(
-                HttpResponse(StatusCodes.NotFound, entity = "Not found")
-              )
-          }
+          val kvStore1min: ReadOnlyWindowStore[Long, InfoStatMovie] = streams
+            .store(StreamProcessing.lastMinuteStoreName, QueryableStoreTypes.windowStore[Long,InfoStatMovie]())
+          val toTime = Instant.now()
+          val fromTime1 = toTime.minusSeconds(60)
+          val fromTime5 = toTime.minusSeconds(300)
+
+          val statsLastMinute = kvStore1min.fetch(id.toLong, fromTime1, toTime).asScala
+            .foldLeft(MovieStatResponse.empty)(
+              (agg,kv) => agg.cumul(kv.value.start_only,kv.value.half,kv.value.full)
+            )
+
+          val statsLast5Minutes = kvStore1min.fetch(id.toLong,fromTime5,toTime).asScala.toList
+            .foldLeft(MovieStatResponse.empty)(
+              (agg,kv) => agg.cumul(kv.value.start_only,kv.value.half,kv.value.full)
+            )
+
+          val allDatasFromBeginning = kvStore1min.all().asScala
+            .filter(kv => kv.key.key() == id.toLong)
+            .toList
+
+          val statsFromBeginning = allDatasFromBeginning
+            .foldLeft(MovieStatResponse.empty)(
+              (agg,kv) => agg.cumul(kv.value.start_only,kv.value.half,kv.value.full)
+            )
+
+          val statsPerFilm = StatsMovie(statsFromBeginning,statsLastMinute,statsLast5Minutes)
+
+          val title = allDatasFromBeginning.map(kv => kv.value.title).distinct
+            //.foldLeft("")((agg,kv)=> agg = kv.value.title)
+
+          //val = ViewsByMovie(kv.key, kv.value.title,0,stats = )
+          complete(
+            //allKeyValues.groupBy(_._1).mapValues(_.map(_._2).sum).toList
+            if(title.nonEmpty)
+              ViewsByMovie(id.toLong,title.head,statsFromBeginning.start_only+statsFromBeginning.half + statsFromBeginning.full,statsPerFilm)
+            else
+              HttpResponse(StatusCodes.NotFound, entity = "Not found")
+
+          )
+
         }
       },
-//      path("stats" / "ten"/ "best"/ "views") {
-//        get {
-//          val kvStoreMeanLatencyPerURL: ReadOnlyKeyValueStore[String, MeanLatencyForURL] = streams
-//            .store("meanLatencyPerUrl", QueryableStoreTypes.keyValueStore[String,MeanLatencyForURL]())
-//
-//          complete(
-//            kvStoreMeanLatencyPerURL.all().asScala.map(kv => MeanLatencyForURLResponse(kv.key,kv.value.meanLatency))
-//              .toList
-//          )
-//        }
-//      }
+      path("stats" / "ten"/ "best"/ "views") {
+        get {
+          val kvStoreMovieViews: ReadOnlyKeyValueStore[String, Long] = streams
+            .store(StreamProcessing.TotalViewsPerFilmStoreName, QueryableStoreTypes.keyValueStore[String,Long]())
+
+          complete(
+            kvStoreMovieViews.all().asScala.map(kv => TitleViewsResponse(kv.key,kv.value)).toList.sortBy(- _.views).take(10)
+          )
+        }
+      },
       path("stats"/ "ten"/ "best"/ "score"){
         get {
           val kvStoreMeanScorePerFilm: ReadOnlyKeyValueStore[String, MeanScoreForFilm] = streams
@@ -81,7 +87,7 @@ object WebServer extends PlayJsonSupport {
               .toList.sortBy(- _.meanScore).take(10)
           )
         }
-      }
+      },
 //        path("stats"/ "ten"/ "worst"/ "views"){
 //        get {
 //          val kvStoreMeanLatencyPerURL: ReadOnlyKeyValueStore[String, MeanLatencyForURL] = streams
@@ -93,17 +99,17 @@ object WebServer extends PlayJsonSupport {
 //          )
 //        }
 //      }
-//        path("stats"/ "ten"/ "worst"/ "score"){
-//        get {
-//          val kvStoreMeanLatencyPerURL: ReadOnlyKeyValueStore[String, MeanLatencyForURL] = streams
-//            .store("meanLatencyPerUrl", QueryableStoreTypes.keyValueStore[String,MeanLatencyForURL]())
-//
-//          complete(
-//            kvStoreMeanLatencyPerURL.all().asScala.map(kv => MeanLatencyForURLResponse(kv.key,kv.value.meanLatency))
-//              .toList
-//          )
-//        }
-//      }
+        path("stats"/ "ten"/ "worst"/ "score"){
+        get {
+          val kvStoreMeanScorePerFilm: ReadOnlyKeyValueStore[String, MeanScoreForFilm] = streams
+            .store(StreamProcessing.MeanScorePerFilmStoreName, QueryableStoreTypes.keyValueStore[String,MeanScoreForFilm]())
+
+          complete(
+            kvStoreMeanScorePerFilm.all().asScala.map(kv => MeanScorePerFilmResponse(kv.value.title,kv.value.meanScore))
+              .toList.sortBy(_.meanScore).take(10)
+          )
+        }
+      }
     )
   }
 }

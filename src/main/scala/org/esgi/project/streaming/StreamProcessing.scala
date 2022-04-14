@@ -5,7 +5,7 @@ import org.apache.kafka.streams.KafkaStreams
 import org.apache.kafka.streams.kstream.{JoinWindows, Printed, TimeWindows, Windowed}
 import org.apache.kafka.streams.scala._
 import org.apache.kafka.streams.scala.kstream._
-import org.esgi.project.streaming.models.{InfoStatMovie, Likes, LikesWithTitle, MeanLatencyForURL, MeanScoreForFilm, Top10MostRated, Views, ViewsByMovie}
+import org.esgi.project.streaming.models.{InfoStatMovie, Likes, LikesWithTitle, MeanScoreForFilm, Views}
 
 import java.io.InputStream
 import java.time.Duration
@@ -24,12 +24,10 @@ object StreamProcessing extends PlayJsonSupport {
 
   val lastMinuteStoreName = "NumberViewsOfLast1Minute"
   val lastFiveMinutesStoreName = "NumberViewsOfLast5Minute"
-  val fromBeginningStoreName = "NumberViewsFromBeginning"
 
   val MeanScorePerFilmStoreName = "MeanScorePerFilm"
 
-  val Top10lowRatingStoreName = "Top10lowRating"
-  val Top10highRatingStoreName = "Top10highRating"
+  val TotalViewsPerFilmStoreName = "TotalViewsPerFilm"
 
   val props = buildProperties
 
@@ -40,20 +38,10 @@ object StreamProcessing extends PlayJsonSupport {
   val likes: KStream[String, Likes] = builder.stream[String, Likes](likesTopicName)
   val views: KStream[String, Views] = builder.stream[String, Views](viewsTopicName)
 
-
-  // TODO Number of views per film
-  //  class movie_key(var _id: String, var view_category: String)
-
-  val viewsGroupedByMovie: KGroupedStream[Long, Views] = views.groupBy((k, v) => v._id)
-
-  val likesGroupedByMovie: KGroupedStream[Long, Likes] = likes.groupBy((k, v) => v._id)
-
-
   // TODO: implement a computation of the views (<10%, <90%, >90%) count per film for the last 30 seconds,
   // TODO: the last minute and the last 5 minutes
 
-  val viewsGroupedByMovie: KGroupedStream[Long, Views] = views
-    .groupBy((key, value) => value._id)
+  val viewsGroupedByMovie: KGroupedStream[Long, Views] = views.groupBy((key, value) => value._id)
 
   val windows1min: TimeWindows = TimeWindows.of(Duration.ofMinutes(1)).advanceBy(Duration.ofMinutes(1))
   val viewsOfLast1Minute: KTable[Windowed[Long], InfoStatMovie] = viewsGroupedByMovie
@@ -67,7 +55,12 @@ object StreamProcessing extends PlayJsonSupport {
     .windowedBy(windows5min)
     .aggregate(InfoStatMovie.empty)(
       (k,v,agg)=>agg.incrementation(v.view_category).attributeTitle(v.title)
-    )(Materialized.as(lastMinuteStoreName))
+    )(Materialized.as(lastFiveMinutesStoreName))
+
+  val viewsTotal: KTable[String, Long] = views
+    .groupBy((k,v) => v.title)
+    .count()(Materialized.as(TotalViewsPerFilmStoreName))
+
 
   // TOP10 MEAN SCORE
   val likesWithViews: KStream[String, LikesWithTitle] = likes.join(views)(
@@ -75,7 +68,7 @@ object StreamProcessing extends PlayJsonSupport {
     JoinWindows.of(Duration.ofMinutes(2))
   )
 
-  val meanScorePerFilm: KTable[String, MeanScoreForFilm] = likesWithViews.groupBy((_,value)=> value._id)
+  val meanScorePerFilm: KTable[Long, MeanScoreForFilm] = likesWithViews.groupBy((_,value)=> value._id)
     .aggregate(MeanScoreForFilm.empty)(
       (_,v, agg)=>{agg.increment(v.score)}.computeMeanScore.attributeTitle(v.title)
     )(Materialized.as(MeanScorePerFilmStoreName))
