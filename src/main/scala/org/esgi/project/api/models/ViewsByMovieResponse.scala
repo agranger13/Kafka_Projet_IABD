@@ -1,19 +1,19 @@
 package org.esgi.project.api.models
 
-import org.esgi.project.api.models.StatsMovie
+import org.esgi.project.api.models.StatsMovieResponse
 import play.api.libs.json.{Json, OFormat}
 
-case class ViewsByMovie(
+case class ViewsByMovieResponse(
                          _id: Long,
                          title: String,
                          view_count : Long,
-                         stats: StatsMovie
+                         stats: StatsMovieResponse
                        ) {
 
   //  def increment(date) = this.copy(sum = this.sum + score, count = this.count + 1)
 }
-object ViewsByMovie {
-  implicit val format: OFormat[ViewsByMovie] = Json.format[ViewsByMovie]
+object ViewsByMovieResponse {
+  implicit val format: OFormat[ViewsByMovieResponse] = Json.format[ViewsByMovieResponse]
 
   //  def empty: ViewsByMovie = ViewsByMovie(0,"",0,StatsMovie.empty)
 }

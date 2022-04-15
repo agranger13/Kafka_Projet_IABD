@@ -7,7 +7,7 @@ import de.heikoseeberger.akkahttpplayjson.PlayJsonSupport
 import org.apache.kafka.streams.{KafkaStreams, StoreQueryParameters}
 import org.apache.kafka.streams.kstream.{KTable, Windowed}
 import org.apache.kafka.streams.state.{QueryableStoreTypes, ReadOnlyKeyValueStore, ReadOnlyWindowStore, WindowStoreIterator}
-import org.esgi.project.api.models.{MeanLatencyForURLResponse, MeanScorePerFilmResponse, MovieCountResponse, MovieStatResponse, StatsMovie, TitleViewsResponse, ViewsByMovie}
+import org.esgi.project.api.models.{MeanScorePerFilmResponse, MovieStatResponse, StatsMovieResponse, TitleViewsResponse, ViewsByMovieResponse}
 import org.esgi.project.streaming.StreamProcessing
 import org.esgi.project.streaming.models.{InfoStatMovie, MeanScoreForFilm}
 
@@ -45,13 +45,13 @@ object WebServer extends PlayJsonSupport {
               (agg,kv) => agg.cumul(kv.value.start_only,kv.value.half,kv.value.full)
             )
 
-          val statsPerFilm = StatsMovie(statsFromBeginning,statsLastMinute,statsLast5Minutes)
+          val statsPerFilm = StatsMovieResponse(statsFromBeginning,statsLastMinute,statsLast5Minutes)
 
           val title = allDatasFromBeginning.map(kv => kv.value.title).distinct
 
           complete(
             if(title.nonEmpty)
-              ViewsByMovie(id.toLong,title.head,statsFromBeginning.start_only+statsFromBeginning.half + statsFromBeginning.full,statsPerFilm)
+              ViewsByMovieResponse(id.toLong,title.head,statsFromBeginning.start_only+statsFromBeginning.half + statsFromBeginning.full,statsPerFilm)
             else
               HttpResponse(StatusCodes.NotFound, entity = "Not found")
 

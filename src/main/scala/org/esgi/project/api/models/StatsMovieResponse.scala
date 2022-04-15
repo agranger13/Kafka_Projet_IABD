@@ -2,14 +2,14 @@ package org.esgi.project.api.models
 
 import play.api.libs.json.{Json, OFormat}
 
-case class StatsMovie(
+case class StatsMovieResponse(
                        past: MovieStatResponse,
                        last_minute: MovieStatResponse,
                        last_five_minutes: MovieStatResponse
                      )
 
 
-object StatsMovie {
-  implicit val format: OFormat[StatsMovie] = Json.format[StatsMovie]
+object StatsMovieResponse {
+  implicit val format: OFormat[StatsMovieResponse] = Json.format[StatsMovieResponse]
   //  def empty: ViewsByMovie = ViewsByMovie(InfoStatMovie.empty, InfoStatMovie.empty, InfoStatMovie.empty)
 }
