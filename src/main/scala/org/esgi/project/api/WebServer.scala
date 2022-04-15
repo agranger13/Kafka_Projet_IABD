@@ -14,11 +14,6 @@ import org.esgi.project.streaming.models.{InfoStatMovie, MeanScoreForFilm}
 import java.time.Instant
 import scala.jdk.CollectionConverters._
 
-/**
- * -------------------
- * Part.3 of exercise: Interactive Queries
- * -------------------
- */
 object WebServer extends PlayJsonSupport {
 
   def routes(streams: KafkaStreams): Route = {
@@ -53,11 +48,8 @@ object WebServer extends PlayJsonSupport {
           val statsPerFilm = StatsMovie(statsFromBeginning,statsLastMinute,statsLast5Minutes)
 
           val title = allDatasFromBeginning.map(kv => kv.value.title).distinct
-            //.foldLeft("")((agg,kv)=> agg = kv.value.title)
 
-          //val = ViewsByMovie(kv.key, kv.value.title,0,stats = )
           complete(
-            //allKeyValues.groupBy(_._1).mapValues(_.map(_._2).sum).toList
             if(title.nonEmpty)
               ViewsByMovie(id.toLong,title.head,statsFromBeginning.start_only+statsFromBeginning.half + statsFromBeginning.full,statsPerFilm)
             else
@@ -88,17 +80,16 @@ object WebServer extends PlayJsonSupport {
           )
         }
       },
-//        path("stats"/ "ten"/ "worst"/ "views"){
-//        get {
-//          val kvStoreMeanLatencyPerURL: ReadOnlyKeyValueStore[String, MeanLatencyForURL] = streams
-//            .store("meanLatencyPerUrl", QueryableStoreTypes.keyValueStore[String,MeanLatencyForURL]())
-//
-//          complete(
-//            kvStoreMeanLatencyPerURL.all().asScala.map(kv => MeanLatencyForURLResponse(kv.key,kv.value.meanLatency))
-//              .toList
-//          )
-//        }
-//      }
+      path("stats" / "ten"/ "worst"/ "views") {
+        get {
+          val kvStoreMovieViews: ReadOnlyKeyValueStore[String, Long] = streams
+            .store(StreamProcessing.TotalViewsPerFilmStoreName, QueryableStoreTypes.keyValueStore[String,Long]())
+
+          complete(
+            kvStoreMovieViews.all().asScala.map(kv => TitleViewsResponse(kv.key,kv.value)).toList.sortBy(_.views).take(10)
+          )
+        }
+      },
         path("stats"/ "ten"/ "worst"/ "score"){
         get {
           val kvStoreMeanScorePerFilm: ReadOnlyKeyValueStore[String, MeanScoreForFilm] = streams
